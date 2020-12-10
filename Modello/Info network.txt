@@ -1,0 +1,8 @@
+nodes Borough
+0 Manhattan
+1 Bronx
+2 Brooklyn
+3 Queens
+4 StatenIsland
+
+commuting numbers between boroughs have been taken from table.1 of 2011-2015 5 years ACS commuting flows of workers (from Census Bureau).
