@@ -1,0 +1,10 @@
+Nodes assigned to boroughs
+0 Manhattan
+1 Bronx
+2 Brooklyn
+3 Queens
+4 StatenIsland
+
+Simulations have been performed using the analysis and modifications referring to mobility populaion flows referring to safegaph data.
+In section "Infer dynamic population flows" of the article https://www.nature.com/articles/s41597-020-00734-5 is explained the difference between visitor flows and 
+inferred population flows.
