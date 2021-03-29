@@ -28,7 +28,7 @@ double mu = 1/3.0;	// rate di guarigione [day^-1]           R0=beta/mu>1 per ave
 double beta = R0*mu;	// trasmissibilità (probabilità di trasmissione dell'infezione)
 int infettiIniz = 10;
 int t;//counter of the simulation
-int nrun = 1;
+int nrun = 100;
 pair<int, int> wiw;	//path who infects who
 
 map<int,vector<int> > neighbours;	//mappa i vicini di un nodo
@@ -87,6 +87,7 @@ vector<vector<double> > Rtemp_matrix;//matrice variazioni commuters recovered
 
 double news, sr_perboro, stemp_perboro, infr_perboro, itemp_perboro, recr_perboro, rtemp_perboro;
 int newsint;//per forzare ad intero l'operazione di aggiornamento
+double traffictemp;
 
 vector<double> totpop;
 vector<vector<double> > comm;//matrice commuters on the network
@@ -226,13 +227,6 @@ int main (int argc, char * argv[]){
 			Srows.clear();
 		}
 
-		cout<<"\n Initial SUSCEPTIBLE matrix: \t"<< endl;
-		for( int i = 0; i < Npop.size(); i++ ){
-			for( int j = 0; j < Npop.size(); j++){
-				cout << arrayS[i][j] << " " ;
-			}cout << endl;
-		} cout << endl;
-
 		//MATRIX OF INFECTED AT WEEK0: at first I have only the infected in the cityseed at first day of simulation
 		for( int i = 0; i < Npop.size(); i++ ){					// costruisco le righe
 
@@ -249,13 +243,6 @@ int main (int argc, char * argv[]){
 			Irows.clear();
 		}
 
-		cout << "\n Initial INFECTED matrix "<< endl;
-		for( int i = 0; i < Npop.size(); i++ ){
-			for( int j = 0; j < Npop.size(); j++){
-				cout << arrayI[i][j] << " " ;
-			}cout << endl;
-		} cout << endl;
-
 		//MATRIX of RECOVERED at WEEK0
 		for( int i = 0; i < Npop.size(); i++ ){					// costruisco le righe
 
@@ -267,12 +254,6 @@ int main (int argc, char * argv[]){
 			Rrows.clear();
 		}
 
-		cout << "\n Initial RECOVERED matrix"<< endl;
-		for( int i = 0; i < Npop.size(); i++ ){
-			for( int j = 0; j < Npop.size(); j++){
-				cout << arrayR[i][j] << " " ;
-			}cout << endl;
-		} cout << endl;
 
 
 		stringstream fn; //stream di stringhe
@@ -320,7 +301,7 @@ int main (int argc, char * argv[]){
 				cout << "\n Commuting variation at first week of simulation: \t" << endl;
 				fileOUTPUTmatrices << "\n Aggiorno le matrici SIR alla prima settimana: \t" <<endl;
 
-				ifstream networkFILE ("./relative_var_1_4x4.txt");
+				ifstream networkFILE ("./relative_var_7_4x4.txt");
 				if ( networkFILE.is_open() ){ //open network file of initial commuting
 
 					rel_var_matrix.clear(); //map
@@ -455,7 +436,6 @@ int main (int argc, char * argv[]){
 							Stemp_matrix[i][j] = arraySr[i][j] + susceptiblehome[i];
 							Itemp_matrix[i][j] = arrayIr[i][j] + infectedhome[i];
 							Rtemp_matrix[i][j] = arrayRr[i][j] + recoveredhome[i];
-							trafficIN[i] = susceptiblehome[i] + infectedhome[i] + recoveredhome[i]; //traffico in ingresso
 						}
 					}
 				}
@@ -491,21 +471,21 @@ int main (int argc, char * argv[]){
 
 			/******************************************************* WORK TIME ***************************************************************/
 
-			fileOUTPUTmatrices<<"Starting ArrayIr: \t"<< endl;
-			for( int i = 0; i < Npop.size(); i++ ){
-				for( int j = 0; j < Npop.size(); j++){
-					fileOUTPUTmatrices << arrayIr[i][j] << " " ;
-				}fileOUTPUTmatrices << endl;
-			} fileOUTPUTmatrices<< endl;
-
-			fileOUTPUTmatrices<<"Starting ArraySr:\t"<< endl;
+			fileOUTPUTmatrices<<"Starting ArraySr (Suscettibili): \t"<< endl;
 			for( int i = 0; i < Npop.size(); i++ ){
 				for( int j = 0; j < Npop.size(); j++){
 					fileOUTPUTmatrices << arraySr[i][j] << " " ;
 				}fileOUTPUTmatrices << endl;
+			} fileOUTPUTmatrices<< endl;
+
+			fileOUTPUTmatrices<<"Starting ArrayIr (Infetti):\t"<< endl;
+			for( int i = 0; i < Npop.size(); i++ ){
+				for( int j = 0; j < Npop.size(); j++){
+					fileOUTPUTmatrices << arrayIr[i][j] << " " ;
+				}fileOUTPUTmatrices << endl;
 			} fileOUTPUTmatrices << endl;
 
-			fileOUTPUTmatrices<<"Starting ArrayRr: \t"<< endl;
+			fileOUTPUTmatrices<<"Starting ArrayRr (Recovered): \t"<< endl;
 			for( int i = 0; i < Npop.size(); i++ ){
 				for( int j = 0; j < Npop.size(); j++){
 					fileOUTPUTmatrices << arrayRr[i][j] << " " ;
@@ -542,6 +522,20 @@ int main (int argc, char * argv[]){
 				fileOUTPUTmatrices << diag[i] << " " ;
 			}fileOUTPUTmatrices << endl;
 
+			//ricalcolo il trafficIN per ogni boro durante il worktime:
+			for(int j = 0; j < Npop.size(); j++){ //per ogni colonna
+
+				traffictemp = 0;
+
+				for(int i = 0; i < Npop.size(); i++){ //mi sposto sulle righe
+					if(i!=j){
+					traffictemp = traffictemp + arraySr[i][j] + arrayIr[i][j] + arrayRr[i][j];
+					}
+				}
+				trafficIN[j] = traffictemp;
+			}
+
+
 			fileOUTPUTmatrices << "\n TrafficIN per boro: \t" << endl;
 			for(int i = 0; i < Npop.size(); i++){
 				fileOUTPUTmatrices << trafficIN[i] << " " ;
@@ -563,8 +557,14 @@ int main (int argc, char * argv[]){
 					infettiW = infettiW + arrayIr[i][j]; //arrayIr will be update correctly from deltaS / deltaR
 				}
 
-				forceW[j]=0.5*infettiW/NpopW[j];		//mappatura force of infection during work time del nodo j
+				forceW[j]=0.5*infettiW/abs(NpopW[j]);		//mappatura force of infection during work time del nodo j
 			}
+
+			fileOUTPUTmatrices << " \n force of infecton worktime: \t" << endl;
+			for(int i = 0; i < Npop.size(); i++){
+
+				fileOUTPUTmatrices << forceW[i] << " "; //arrayIr will be update correctly from deltaS / deltaR
+			}fileOUTPUTmatrices << endl;
 
 			//aggiornamento matrici durante il worktime
 			for(int j = 0; j < Npop.size(); j++){
