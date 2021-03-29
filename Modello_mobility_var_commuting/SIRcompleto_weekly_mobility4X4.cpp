@@ -45,8 +45,7 @@ map<int,double> forceW;			//mappa la force of infection di ogni nodo nel WORK TI
 map<int,double> forceH;			//mappa la force of infection di ogni nodo nell'HOME TIME
 
 //file dove salvare temporaneamente le variazioni relative
-map<int,vector<double> > rel_var_trafficOUT;	//mappa il peso di tutti i link uscenti dalla città
-map<int,vector<double> > rel_var_trafficIN;
+map<int,vector<double> > rel_var_matrix;	//mappa delle variazioni sui link del numero di commuters
 map<pair<int,int>,double> rel_var_weight;
 
 
@@ -56,14 +55,16 @@ vector<double> Irows;		//righe di arrayI
 vector<double> Rrows;		//righe di arrayR
 vector<double> deltaStot;	//variazione infetti alla fine della giornata
 vector<double> Stemp;		//variabile temporanea
+vector<double> rel_var_rows;
 
 vector<int>::size_type k; //istanzio oggetto di tipo (vector) size
 
+vector<double> susceptiblehome; //array di suscettibili da riportare a casa
 vector<double> infectedhome;
 vector<double> recoveredhome;
 vector<double> infectedboro;
 vector<double> recoveredboro;
-double infh, rech, infb, rb; //support var for infectedhome and recoveredhome
+double infh, rech, susch, infb, rb; //support var for infectedhome and recoveredhome
 
 vector<vector<double> > arrayNULL; //matrice identicamente nulla
 vector<vector<double> > deltaS;
@@ -76,10 +77,16 @@ vector<vector<double> > arraySr;//matrice Srun
 vector<vector<double> > arrayIr;//matrice Irun
 vector<vector<double> > arrayRr;//matrice Rrun
 
-//creo supporti temporanei per il riaggiornamento delle matrici
-vector<vector<double> > tempSr;
-vector<vector<double> > tempIr;
-vector<vector<double> > tempRr;
+//creo supporti temporanei per il riaggiornamento delle matrici temporanee di variazione del commuting
+vector<double> tempSr_rows;
+vector<double> tempIr_rows;
+vector<double> tempRr_rows;
+vector<vector<double> > Stemp_matrix;//matrice variazioni commuters suscettibili
+vector<vector<double> > Itemp_matrix;//matrice variazioni commuters infetti
+vector<vector<double> > Rtemp_matrix;//matrice variazioni commuters recovered
+
+double news, sr_perboro, stemp_perboro, infr_perboro, itemp_perboro, recr_perboro, rtemp_perboro;
+int newsint;//per forzare ad intero l'operazione di aggiornamento
 
 vector<double> totpop;
 vector<vector<double> > comm;//matrice commuters on the network
@@ -164,20 +171,6 @@ int main (int argc, char * argv[]){
 
 			}
 		}else cout << "\nUnable to open the network file"<< endl;
-
-			cout<<"\n Starting TRAFFIC OUT MAP: \t"<< endl;
-			for( int i = 0; i < Npop.size(); i++ ){
-				for( int j = 0; j < Npop.size(); j++){
-					cout << trafficOUTmap[i][j] << " " ;
-				}cout << endl;
-			} cout << endl;
-
-			cout<<"\n Starting TRAFFIC OUT MAP:\t"<< endl;
-			for( int i = 0; i < Npop.size(); i++ ){
-				for( int j = 0; j < Npop.size(); j++){
-					cout << trafficINmap[i][j] << " " ;
-				}cout << endl;
-			} cout << endl;
 
 		//ad ogni iter3 selezionerò il nodo di partenza e l'array che indica i nodi di arrivo
 		for( iter3 = trafficOUTmap.begin(); iter3 != trafficOUTmap.end(); iter3 ++ ){
@@ -327,44 +320,171 @@ int main (int argc, char * argv[]){
 				cout << "\n Commuting variation at first week of simulation: \t" << endl;
 				fileOUTPUTmatrices << "\n Aggiorno le matrici SIR alla prima settimana: \t" <<endl;
 
-				ifstream commutingFILE ("./relative_var_1_4x4.txt");
-				if ( commutingFILE.is_open() ){ //apro il file delle variazioni relative di commuting
+				ifstream networkFILE ("./relative_var_1_4x4.txt");
+				if ( networkFILE.is_open() ){ //open network file of initial commuting
 
-					rel_var_trafficOUT.clear(); //matrice var relativa traffic out
-					rel_var_trafficIN.clear();
-					rel_var_weight.clear();
+					rel_var_matrix.clear(); //map
 					neighbours.clear();
 
-					while ( commutingFILE.good() ){
+					while ( networkFILE.good() ){
 
-						while( commutingFILE >> i >> j >> wij ){
+						while( networkFILE >> i >> j >> wij ){
+
 							neighbours[i].push_back(j);		//aggiunge ai vicini del nodo i il nodo j
-							rel_var_weight[pair<int,int>(i,j)]= wij;	//attribuisce al link tra il nodo i e il nodo j il peso wij
-							if(i!=j){
-							rel_var_trafficOUT[i].push_back(wij);	//attribuisce al nodo i esimo il traffico in uscita (tiene conto anche di i --> i)
-							rel_var_trafficIN[j].push_back(wij);		//attribuisce al nodo i esimo il traffico in entrata
-							}		//attribuisce al nodo i esimo il traffico in entrata
+							weight[pair<int,int>(i,j)]= wij;	//attribuisce al link tra il nodo i e il nodo j il peso wij
+							rel_var_matrix[i].push_back(wij);	//attribuisce al nodo i esimo il traffico in uscita (tiene conto anche di i --> i)
+
 						}
-						commutingFILE.close();
+						networkFILE.close();
 
 					}
-				}else cout << "\nUnable to open the relative var of commuting file.\t"<< endl;
+				}else cout << "\nUnable to open the network file"<< endl;
 
 				cout << "\n Variazione relativa commuting prima settimana: \t" <<endl;
 
-				fileOUTPUTmatrices<<"\n Variazione relativa commuting prima settimana TRAFFIC OUT: \t"<< endl;
+				fileOUTPUTmatrices<<"\n Variazione relativa commuting prima settimana: \t"<< endl;
 				for( int i = 0; i < Npop.size(); i++ ){
 					for( int j = 0; j < Npop.size(); j++){
-						fileOUTPUTmatrices << rel_var_trafficOUT[i][j] << " " ;
+						fileOUTPUTmatrices << rel_var_matrix[i][j] << " " ;
 					}fileOUTPUTmatrices << endl;
-				} fileOUTPUTmatrices<< endl;
+				}fileOUTPUTmatrices<< endl;
 
-				fileOUTPUTmatrices<<"\n Variazione relativa commuting prima settimana TRAFFIC IN: \t"<< endl;
+				/***********************************MATRICE S, I, R  VAR PRIMA SETTIMANA***********************************/
+
+				susceptiblehome.clear();
+				Stemp_matrix.clear();
+
+				for( int i = 0; i < Npop.size(); i++ ){
+					sr_perboro = 0;
+					stemp_perboro = 0;
+
+					for( int j = 0; j < Npop.size(); j++ ){
+
+						news = 0;
+						newsint = 0;
+						if(i != j){ //off diagonal terms con variazione dei commuters suscettibili
+							news = arraySr[i][j] * rel_var_matrix[i][j];
+							newsint = news;
+							tempSr_rows.push_back(newsint);//riempio i link del network di suscettibili
+
+							sr_perboro = sr_perboro + arraySr[i][j]; //off diagonal terms in susceptible matrix
+							stemp_perboro = stemp_perboro + newsint;
+
+						}else tempSr_rows.push_back(0);
+					}
+					susceptiblehome.push_back(sr_perboro - stemp_perboro); //potrebbe venire negativo quando il numero di commutes aumenta
+					Stemp_matrix.push_back(tempSr_rows);// inserisco le righe nella matrice
+					tempSr_rows.clear();
+				}
+
+				fileOUTPUTmatrices << "Suscettibili at home per boro: \t" << endl;
+				for ( int i = 0; i < Npop.size(); i++){
+					fileOUTPUTmatrices << susceptiblehome[i] << endl;
+				} fileOUTPUTmatrices << endl;
+
+				infectedhome.clear();
+				Itemp_matrix.clear();
+
+				for( int i = 0; i < Npop.size(); i++ ){
+					infr_perboro = 0;
+					itemp_perboro = 0;
+
+					for( int j = 0; j < Npop.size(); j++ ){
+
+						news = 0;
+						newsint = 0;
+						if(i != j){ //off diagonal terms con variazione dei commuters infetti
+							news = arrayIr[i][j] * rel_var_matrix[i][j];
+							newsint = news;
+							tempIr_rows.push_back(newsint);//riempio i link del network di suscettibili
+
+							infr_perboro = infr_perboro + arrayIr[i][j]; //off diagonal terms in susceptible matrix
+							itemp_perboro = itemp_perboro + newsint;
+
+						}else tempIr_rows.push_back(0);
+					}
+					infectedhome.push_back(infr_perboro - itemp_perboro); //potrebbe venire negativo quando il numero di commutes aumenta
+					Itemp_matrix.push_back(tempIr_rows);// inserisco le righe nella matrice
+					tempIr_rows.clear();
+				}
+
+				fileOUTPUTmatrices << "Infetti at home per boro: \t" << endl;
+				for ( int i = 0; i < Npop.size(); i++){
+					fileOUTPUTmatrices << infectedhome[i] << endl;
+				} fileOUTPUTmatrices << endl;
+
+
+				recoveredhome.clear();
+				Rtemp_matrix.clear();
+
+				for( int i = 0; i < Npop.size(); i++ ){
+					recr_perboro = 0;
+					rtemp_perboro = 0;
+
+					for( int j = 0; j < Npop.size(); j++ ){
+
+						news = 0;
+						newsint = 0;
+						if(i != j){ //off diagonal terms con variazione dei commuters infetti
+							news = arrayRr[i][j] * rel_var_matrix[i][j];
+							newsint = news;
+							tempRr_rows.push_back(newsint);//riempio i link del network di suscettibili
+
+							recr_perboro = recr_perboro + arrayRr[i][j]; //off diagonal terms in susceptible matrix
+							rtemp_perboro = rtemp_perboro + newsint;
+
+						}else tempRr_rows.push_back(0);
+					}
+					recoveredhome.push_back(recr_perboro - rtemp_perboro); //potrebbe venire negativo quando il numero di commutes aumenta
+					Rtemp_matrix.push_back(tempRr_rows);// inserisco le righe nella matrice
+					tempRr_rows.clear();
+				}
+
+				fileOUTPUTmatrices << "Recovered at home per boro: \t" << endl;
+				for ( int i = 0; i < Npop.size(); i++){
+					fileOUTPUTmatrices << recoveredhome[i] << endl;
+				} fileOUTPUTmatrices << endl;
+
+				// AGGIORNO LE MATRICI RUN RIPORTANDO SULLA DIAGONALE I NUOVI SUSCETTIBILI, INFETTI E RECOVERED CHE NON VIAGGIANO
+
+				//DIAGONALI delle matrici Stemp Itemp Rtemp
+
+				for( int i = 0; i < Npop.size(); i++ ){
+					for( int j = 0; j < Npop.size(); j++ ){
+						if(i==j){
+							Stemp_matrix[i][j] = arraySr[i][j] + susceptiblehome[i];
+							Itemp_matrix[i][j] = arrayIr[i][j] + infectedhome[i];
+							Rtemp_matrix[i][j] = arrayRr[i][j] + recoveredhome[i];
+							trafficIN[i] = susceptiblehome[i] + infectedhome[i] + recoveredhome[i]; //traffico in ingresso
+						}
+					}
+				}
+
+				arraySr = Stemp_matrix;
+				arrayIr = Itemp_matrix;
+				arrayRr = Rtemp_matrix;
+
+				fileOUTPUTmatrices<<"Matrice suscettibili aggiornata first week: \t"<< endl;
 				for( int i = 0; i < Npop.size(); i++ ){
 					for( int j = 0; j < Npop.size(); j++){
-						fileOUTPUTmatrices << rel_var_trafficIN[i][j] << " " ;
+						fileOUTPUTmatrices << arraySr[i][j] << " " ;
 					}fileOUTPUTmatrices << endl;
-				} fileOUTPUTmatrices<< endl;
+				} fileOUTPUTmatrices << endl;
+
+				fileOUTPUTmatrices<<"Matrice infetti aggiornata first week: \t"<< endl;
+				for( int i = 0; i < Npop.size(); i++ ){
+					for( int j = 0; j < Npop.size(); j++){
+						fileOUTPUTmatrices << arrayIr[i][j] << " " ;
+					}fileOUTPUTmatrices << endl;
+				} fileOUTPUTmatrices << endl;
+
+				fileOUTPUTmatrices<<"Matrice recovered aggiornata first week: \t"<< endl;
+				for( int i = 0; i < Npop.size(); i++ ){
+					for( int j = 0; j < Npop.size(); j++){
+						fileOUTPUTmatrices << arrayRr[i][j] << " " ;
+					}fileOUTPUTmatrices << endl;
+				} fileOUTPUTmatrices << endl;
+
 
 			}//end dell'IF di aggiornamento della prima settimana
 
@@ -392,9 +512,8 @@ int main (int argc, char * argv[]){
 				}fileOUTPUTmatrices << endl;
 			} fileOUTPUTmatrices << endl;
 
-			fileOUTPUTmatrices << "\n Total pop per boro: \t" << endl;
-			//compute total pop per boro
 
+			//compute total pop per boro
 			for(int i = 0; i < Npop.size(); i++){
 				p = 0;
 				for(int j = 0; j < Npop.size(); j++){
@@ -403,13 +522,32 @@ int main (int argc, char * argv[]){
 				totpop.push_back(p);
 			}
 
+			fileOUTPUTmatrices << "\n Tot population at starting of the timestep: \t" << endl;
 			for(int i = 0; i < Npop.size(); i++){
 				fileOUTPUTmatrices << totpop[i] << " " ;
 			}fileOUTPUTmatrices << endl;
-
 			totpop.clear();
 
-			//then define the people at worktime in each node: function of diag and trafficIN che sono stati definiti con la lettura del file di commuting_0
+			//diagonale della matrice dei suscettibili
+			for(int i = 0; i < Npop.size(); i++){
+				for(int j = 0; j < Npop.size(); j++){
+					if(i==j){
+						diag[i] = arraySr[i][j];
+					}
+				}
+			}
+
+			fileOUTPUTmatrices << "\n Diagonale matrice dei suscettibili: \t" << endl;
+			for(int i = 0; i < Npop.size(); i++){
+				fileOUTPUTmatrices << diag[i] << " " ;
+			}fileOUTPUTmatrices << endl;
+
+			fileOUTPUTmatrices << "\n TrafficIN per boro: \t" << endl;
+			for(int i = 0; i < Npop.size(); i++){
+				fileOUTPUTmatrices << trafficIN[i] << " " ;
+			}fileOUTPUTmatrices << endl;
+
+			//ho bisogno di calcolare anche la diagonale della matrice dei suscettibili
 			for(int i = 0; i < Npop.size(); i++){
 				NpopW[i] = diag[i] + trafficIN[i];
 			}// persone presenti nel nodo i durante il worktime
@@ -545,25 +683,6 @@ int main (int argc, char * argv[]){
 					cout << arrayRr[i][j] << " " ;
 				}cout << endl;
 			} cout << endl;
-
-			//check matrice commuters su ij costante
-			//for( int i = 0; i < Npop.size(); i++ ){					// costruisco le righe
-				//for( int j = 0; j < Npop.size(); j++ ){
-					//c=0;
-					//c = arraySr[i][j] + arrayRr[i][j] + arrayIr[i][j];
-					//commrows.push_back(c);
-				//}
-				//comm.push_back(commrows);					// inserisco le righe nella matrice
-				//commrows.clear();
-			//}
-
-			//cout<<"commuters on ij node: \t"<< endl;
-			//for( int i = 0; i < Npop.size(); i++ ){
-				//for( int j = 0; j < Npop.size(); j++){
-					//cout << comm[i][j] << " " ;
-				//}cout << endl;
-			//} cout << endl;
-			//comm.clear();
 
 			//Verify the total pop per boro
 			for(int i = 0; i < Npop.size(); i++){
