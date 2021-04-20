@@ -1,0 +1,18 @@
+In this repository there is the R script to build up the txt files that will be the input commuting files for the SIR model modified
+at NYC's ZCTAs level. 
+Data on population per ZCTA have been taken from the Azure repository Open Datasets
+(https://azure.microsoft.com/en-us/services/open-datasets/catalog/us-decennial-census-zip/)
+Data were about all US ZCTAs so the dataset has been clean from all unimortant informations.
+These data have been used to create the input txt file for the population at zcta level
+and to check also that the computed traffic out from a single zcta isn't higher then the total population 
+at zcta level during the 10 weeks considered for the variations of the commuting pattern.
+
+Moreover, the data for commuting at ZCTA level have been constructed using the data avaiable in the repository: 
+
+https://github.com/GeoDS/COVID19USFlows -- from the materials of the paper: "Multiscale dynamic human mobility flow dataset in the U.S. during the COVID-19 epidemic" 
+
+So, it has been necessary to use the geographic corrispondences between census tracts and ZCTA at geographic level, using the NYC zcta to geoid csv file:
+this has been collected from https://www.census.gov/programs-surveys/geography/technical-documentation/records-layout/2010-zcta-record-layout.html,
+were 2010 ZCTA to County Relationship File Layout is avaiable.
+
+
